@@ -128,6 +128,7 @@ use winreg::{
 #[cfg(not(target_os = "windows"))]
 extern crate dirs;
 
+mod bvdf;
 #[doc(hidden)]
 pub mod steamapp;
 pub use steamapp::SteamApp;
