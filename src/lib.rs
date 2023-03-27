@@ -128,7 +128,9 @@ use winreg::{
 #[cfg(not(target_os = "windows"))]
 extern crate dirs;
 
+#[cfg(feature = "shortcuts_extras")]
 mod bvdf;
+
 #[doc(hidden)]
 pub mod steamapp;
 pub use steamapp::SteamApp;

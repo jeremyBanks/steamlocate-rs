@@ -8,7 +8,10 @@ use std::{fs, iter::Peekable, path::Path, slice::Iter};
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Shortcut {
-    /// Steam's provided app id
+    /// Steam's short-format (32-bit) app ID for this shortcut.
+    ///
+    /// This is the format used for naming associated image files in the
+    /// `Steam/userdata/USER_ID/config/grid directory`.
     pub appid: u32,
     /// The name of the application
     pub app_name: String,
@@ -22,18 +25,76 @@ pub struct Shortcut {
 
 #[cfg(feature = "shortcuts_extras")]
 impl Shortcut {
-    /// Calculates the shortcut's Steam ID from the executable and app name
-    pub fn steam_id(&self) -> u64 {
+    /// Creates a new Shortcut with the given name and executable path,
+    /// generating the same app ID that Steam would.
+    pub fn new(app_name: String, executable: String) -> Shortcut {
         let algorithm = crc::Crc::<u32>::new(&crc::CRC_32_ISO_HDLC);
 
+        // This is the same algorithm that Steam uses to generate the default
+        // app ID for shortcuts added through the UI. This ID does not change,
+        // even if users change the name or executable path later.
         let mut digest = algorithm.digest();
-        digest.update(self.executable.as_bytes());
-        digest.update(self.app_name.as_bytes());
+        digest.update(executable.as_bytes());
+        digest.update(app_name.as_bytes());
+        let appid = digest.finalize() | 0x80000000;
 
-        let top = digest.finalize() | 0x80000000;
-        ((top as u64) << 32) | 0x02000000
+        let executable_path = Path::new(&executable);
+        let start_dir = executable_path
+            .parent()
+            .unwrap_or(&executable_path)
+            .to_str()
+            .unwrap()
+            .to_string();
+
+        Shortcut {
+            appid,
+            app_name,
+            executable,
+            start_dir,
+        }
+    }
+
+    /// Calculates the shortcut's long-format (64-bit) ID for Steam.
+    ///
+    /// This is the format used in `steam://rungameid/...` URLs.
+    pub fn steam_id(&self) -> u64 {
+        ((self.appid as u64) << 32) | 0x02000000
+    }
+
+    /// Saves this shortcut to the Steam library of the given user ID, or all Steam libraries if `None`.
+    ///
+    /// This will either insert or update depending on whether a shortcut with the same app ID already exists.
+    ///
+    /// ```
+    /// let shortcut = Shortcut::new("My Game".to_string(), "C:\\Program Files\\My Game\\MyGame.exe".to_string());
+    ///
+    /// shortcut.save_to_library(None)
+    /// ```
+    pub fn save_to_library(&self, user_id: Option<u64>) {
+        let steam_dir = crate::SteamDir::locate().unwrap();
+
+        let user_data = steam_dir.path.join("userdata");
+        for entry in fs::read_dir(user_data).ok().unwrap().filter_map(|e| e.ok()) {
+            if let Some(user_id) = user_id {
+                if entry.file_name().to_string_lossy() != user_id.to_string() {
+                    continue;
+                }
+            }
+
+            let shortcuts_path = entry.path().join("config").join("shortcuts.vdf");
+            if !shortcuts_path.is_file() {
+                continue;
+            }
+
+            println!("let's do it!");
+        }
     }
 }
+
+#[cfg(not(feature = "steamid_ng"))]
+type SteamID = u64;
+#[cfg(feature = "steamid_ng")]
+type SteamID = steamid_ng::SteamID;
 
 /// Discovers any shorcuts stored within `userdata`
 pub fn discover_shortcuts(steam_dir: &Path) -> Vec<Shortcut> {

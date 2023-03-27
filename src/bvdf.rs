@@ -1,8 +1,16 @@
-use std::collections::BTreeMap;
+//! Encoding and decoding the binary VDF format used to store non-Steam game shortcuts.
+//!
+//! Based on the format descriptions at
+//! <https://github.com/Corecii/steam-binary-vdf-ts#binary-vdf-format> and
+//! <https://developer.valvesoftware.com/wiki/Add_Non-Steam_Game>.
+
 use std::convert::TryInto;
 use std::ffi::CString;
 
+use indexmap::IndexMap;
 use thiserror::Error;
+
+use crate::Shortcut;
 
 const TYPE_MAP: u8 = 0x00;
 const TYPE_STR: u8 = 0x01;
@@ -10,41 +18,43 @@ const TYPE_INT: u8 = 0x02;
 const TYPE_END: u8 = 0x08;
 
 #[test]
-fn test_shortcuts() {
-    fn shortcuts() -> Vec<Map> {
-        let steam_dir = crate::SteamDir::locate().unwrap();
+fn test_round_trip_real_data() {
+    use bstr::ByteSlice;
 
-        let mut shortcuts = Vec::new();
+    let steam_dir = crate::SteamDir::locate().unwrap();
 
-        // Find and parse each `userdata/<user_id>/config/shortcuts.vdf` file
-        let user_data = steam_dir.path.join("userdata");
-        for entry in std::fs::read_dir(user_data)
-            .ok()
-            .unwrap()
-            .filter_map(|e| e.ok())
-        {
-            let shortcuts_path = entry.path().join("config").join("shortcuts.vdf");
-            if !shortcuts_path.is_file() {
-                continue;
-            }
+    let mut shortcut_data = Vec::new();
 
-            if let Ok(contents) = std::fs::read(&shortcuts_path) {
-                let map = decode_map(&mut &contents[..]).unwrap();
-                shortcuts.push(map);
-            }
+    let user_data = steam_dir.path.join("userdata");
+    for entry in std::fs::read_dir(user_data)
+        .ok()
+        .unwrap()
+        .filter_map(|e| e.ok())
+    {
+        let shortcuts_path = entry.path().join("config").join("shortcuts.vdf");
+        if !shortcuts_path.is_file() {
+            continue;
         }
 
-        shortcuts
+        if let Ok(contents) = std::fs::read(&shortcuts_path) {
+            shortcut_data.push(contents);
+        }
     }
 
-    let shortcuts = shortcuts();
-    for map in &shortcuts {
-        let encoded = encode(&map);
-        let decoded = decode_map(&mut &encoded[..]).unwrap();
-        assert_eq!(map, &decoded);
+    for contents in &shortcut_data {
+        let decoded = decode(&contents).unwrap();
+        let encoded = encode(&decoded);
+        assert_eq!(contents.as_bstr(), encoded.as_bstr());
     }
+}
 
-    panic!("{shortcuts:#?}", shortcuts = shortcuts);
+#[test]
+fn test_really_add_something_to_your_library_for_real_maybe_remove_this_test() {
+    let shortcut = Shortcut::new(
+        "My Game".to_string(),
+        "C:\\Program Files\\My Game\\MyGame.exe".to_string(),
+    );
+    shortcut.save_to_library(None);
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,7 +64,8 @@ pub enum Val {
     Int(Int),
 }
 
-pub type Map = BTreeMap<CString, Val>;
+pub type Map = IndexMap<CString, Val>;
+
 pub type Int = u32;
 
 #[derive(Debug, Error)]
@@ -93,7 +104,7 @@ fn decode_int(bytes: &mut &[u8]) -> Result<Int, DecodeError> {
     })
 }
 
-pub fn decode_map(mut bytes: &mut &[u8]) -> Result<Map, DecodeError> {
+fn decode_map(mut bytes: &mut &[u8]) -> Result<Map, DecodeError> {
     Ok({
         let mut map = Map::new();
 
