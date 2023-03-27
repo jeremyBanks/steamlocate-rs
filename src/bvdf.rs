@@ -41,11 +41,14 @@ fn test_round_trip_real_data() {
         }
     }
 
-    for contents in &shortcut_data {
+    for contents in shortcut_data.iter() {
         let decoded = decode(&contents).unwrap();
         let encoded = encode(&decoded);
         assert_eq!(contents.as_bstr(), encoded.as_bstr());
+        println!("{:#?}", decoded);
     }
+
+    panic!();
 }
 
 #[test]

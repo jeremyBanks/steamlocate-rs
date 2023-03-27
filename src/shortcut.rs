@@ -23,7 +23,6 @@ pub struct Shortcut {
     pub start_dir: String,
 }
 
-#[cfg(feature = "shortcuts_extras")]
 impl Shortcut {
     /// Creates a new Shortcut with the given name and executable path,
     /// generating the same app ID that Steam would.
