@@ -33,9 +33,6 @@
 //! }
 //! ```
 
-#[doc(hidden)]
-pub use include_optional::{include_str_optional, include_bytes_optional};
-
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::path::PathBuf;
@@ -119,7 +116,10 @@ pub struct SlinkyArgs {
     crate_path: &'static str,
 
     /// The contents of the file `steam_appid.txt` in the crate's root directory, if any.
-    crate_steam_app_id: Option<&'static str>,
+    crate_steam_app_id: Option<u32>,
+
+    /// The contents of the file `assets/steam_icon.png` in the crate's root directory, if any.
+    crate_steam_icon: Option<&'static [u8]>,
 }
 
 impl SlinkyArgs {
@@ -164,7 +164,8 @@ macro_rules! linky {
             binary_source,
             crate_name: env!("CARGO_CRATE_NAME"),
             crate_path: env!("CARGO_MANIFEST_DIR"),
-            crate_steam_app_id: $crate::include_str_optional!(concat!("a", "b")),
+            crate_steam_app_id: Some(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/steam_appid.txt"))).and_then(|s| s.parse().ok()),
+            crate_steam_icon: Some(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/steam_icon.png"))),
             ..SlinkyArgs::default()
         })
     }};
