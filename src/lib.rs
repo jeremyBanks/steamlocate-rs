@@ -4,14 +4,15 @@
 //! At least for this initial version, the only supported platform is
 //! Steam Deck Arch Linux.
 
-
+use sha2::Sha384;
+use sha2::Digest;
 use std::borrow::Cow;
+use std::env::current_exe;
+use std::env::home_dir;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::path::PathBuf;
-use sha2::Sha384;
 
-#[doc(hidden)]
 #[derive(Default)]
 pub struct Args {
     /// The steam app ID used for this shortcut.
@@ -120,12 +121,42 @@ pub enum ShortcutLogoPosition {
 }
 
 impl Args {
+    #[allow(deprecated)]
     pub fn slinky(&self) {
+        let binary_actual = current_exe().unwrap();
+        let binary_source = self.binary_source.unwrap_or_else(|| binary_actual.clone());
+        let binary_target = self.binary.unwrap_or_else(|| {
+            let mut path = home_dir().unwrap();
+            path.push(".local/bin");
+            path.push(self.crate_name);
+            path
+        });
+
+        // This might need to be abstracted 'cause we've got a bunch of files, no?
+        // Maybe the hashing is kind-of pointless since we're not persisting it.
+        let mut copy_binary = if !binary_target.exists() {
+            true
+        } else {
+            let mut hasher = Sha384::new();
+            let mut file = std::fs::File::open(&binary_target).unwrap();
+            std::io::copy(&mut file, &mut hasher).unwrap();
+            let hash_target = hasher.finalize();
+
+            let mut hasher = Sha384::new();
+            let mut file = std::fs::File::open(&binary_source).unwrap();
+            std::io::copy(&mut file, &mut hasher).unwrap();
+            let hash_source = hasher.finalize();
+
+            hash_target != hash_source
+        };
+
         // what are the steps we need to do here?
 
+        // we're going to compare files using sha384 hash digests
+
         // 1. check if the binary exists and is the same as the source
-        // 2. if not, copy the source to the binary
-        // 3. create the shortcut
+        // 2. if not, copy the source to the binary, and mark it as executable
+        // 3. create the shortcut in every steam library we find.
         // 4. if `must_run_from_steam` is true, check if we're running from Steam
         // 5. if not, re-launch the binary through Steam
         // 6. if `must_run_from_binary_path` is true, check if we're running from the binary
@@ -140,7 +171,15 @@ impl Args {
     }
 
     fn install_binary(&self) {
-        todo!()
+        // 1. check if the binary exists and is the same as the source
+        // 2. if not, copy the source to the binary, and mark it as executable
+
+        // we need to read each file from disk, if it exists, and calculate its sha-384 hash.
+        // but if the target file doesn't exist we can skip the ceremony.
+
+        let 
+
+
     }
 
     fn upsert_steam_shortcut(&self) {
@@ -244,7 +283,7 @@ macro_rules! slinky {
         assets from $path:literal
         $(, $($rest:tt)*)?
     } => {{
-        let mut linky = $crate::linky!{$($($rest)*)?};
+        let mut linky = $crate::slinky!{$($($rest)*)?};
         linky.png_square = Some(::std::borrow::Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "_icon.png"))));
         linky.png_portrait = Some(::std::borrow::Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "p.png"))));
         linky.png_landscape = Some(::std::borrow::Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, ".png"))));

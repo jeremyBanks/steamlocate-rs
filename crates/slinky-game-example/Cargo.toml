@@ -9,3 +9,4 @@ slinky = { path = "../.." }
 eframe = "0.21.3"
 egui = "0.21.0"
 winit = "0.28.3"
+egui_extras = { version = "0.21.0", features = ["image", "svg"] }
