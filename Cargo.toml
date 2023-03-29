@@ -1,3 +1,6 @@
+[workspace]
+members = [".", "crates/*"]
+
 [package]
 name = "slinky"
 version = "0.2.0"
@@ -18,8 +21,6 @@ thiserror = "1"
 
 [target.'cfg(target_os="windows")'.dependencies]
 winreg = "0.10"
+
 [target.'cfg(not(target_os="windows"))'.dependencies]
 dirs = "3"
-
-[dev-dependencies]
-bstr = "1.4.0"

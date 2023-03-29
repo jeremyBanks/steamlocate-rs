@@ -1,0 +1,9 @@
+[package]
+name = "slinky-slint-example"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+slinky = { path = "../.." }
+winit = "0.28.3"

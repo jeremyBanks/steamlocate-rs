@@ -42,8 +42,8 @@ use std::ops::DerefMut;
 use std::path::PathBuf;
 
 /// The arguments to the `slinky::linky!` macro. All fields are optional.
-#[derive(Debug, Default)]
-pub struct SlinkyArgs {
+#[derive(Default)]
+pub struct Args {
     /// The steam app ID used for this shortcut.
     /// This can be any value with the high bit set (to indicate that it's a shortcut),
     /// but most tools prefer to use the same value that Steam would if it created the shortcut.
@@ -114,36 +114,53 @@ pub struct SlinkyArgs {
     /// The current process's arguments.
     pub args: Option<Vec<String>>,
 
-    /// The icon to use for this shortcut in the Steam library.
-    pub png_icon: Option<Cow<'static, [u8]>>,
+    /// The square icon to use for this shortcut in the Steam library. Can include transparency.
+    pub png_square: Option<Cow<'static, [u8]>>,
 
-    /// The portrait-aligned cover to use for this shortcut in the Steam library.
+    /// The portrait-aligned cover to use for this shortcut in the Steam library. Must be opaque.
     pub png_portrait: Option<Cow<'static, [u8]>>,
 
-    /// The landscape-aligned cover to use for this shortcut in the Steam library.
+    /// The landscape-aligned cover to use for this shortcut in the Steam library. Must be opaque.
     pub png_landscape: Option<Cow<'static, [u8]>>,
 
-    /// The hero image to use for this shortcut in the Steam library.
+    /// The hero image to use for this shortcut in the Steam library. Must be opaque.
     pub png_hero: Option<Cow<'static, [u8]>>,
 
-    /// The logo image to use for this shortcut in the Steam library.
+    /// The logo image to use for this shortcut in the Steam library. Can include transparency.
     pub png_logo: Option<Cow<'static, [u8]>>,
 
+    /// The position and maximum dimensions of the logo image over the hero image in the Steam library.
+    /// 
+    /// ### Default
+    /// 
+    /// [`ShortcutLogoPosition::BottomLeft`] with `50.0`% max-width and `50.0`% max-height.
+    pub png_logo_placement: Option<(ShortcutLogoPosition, (f32, f32))>,
+
     /// The name of the crate this macro was invoked from.
-    crate_name: &'static str,
+    pub crate_name: &'static str,
 }
 
-impl SlinkyArgs {
+#[derive(Debug, Default, Clone, Copy)]
+pub enum ShortcutLogoPosition {
+    #[default]
+    BottomLeft,
+    TopCenter,
+    CenterCenter,
+    BottomCenter,
+}
+
+
+impl Args {
     pub fn linky(&self) {
-        todo!()
+        eprintln!("how do I linky?");
     }
 }
 
 #[doc(hidden)]
-pub struct Linky(SlinkyArgs);
+pub struct Linky(pub Args);
 
 impl Deref for Linky {
-    type Target = SlinkyArgs;
+    type Target = Args;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -165,7 +182,7 @@ impl Drop for Linky {
 #[macro_export]
 macro_rules! linky {
     {$(,)?} => {{
-        Linky(SlinkyArgs {
+        $crate::Linky($crate::Args {
             crate_name: env!("CARGO_CRATE_NAME"),
             ..Default::default()
         })
@@ -176,7 +193,7 @@ macro_rules! linky {
         $(, $($rest:tt)*)?
     } => {{
         let mut linky = $crate::linky!{$($($rest)*)?};
-        linky.name = Some(cast![to owned String = $name]);
+        linky.name = Some($crate::cast![to owned String = $name]);
         linky
     }};
 
@@ -185,7 +202,7 @@ macro_rules! linky {
         $(, $($rest:tt)*)?
     } => {{
         let mut linky = $crate::linky!{$($($rest)*)?};
-        linky.app_id = Some(cast![u32 = $app_id]);
+        linky.app_id = Some($crate::cast![u32 = $app_id]);
         linky
     }};
 
@@ -212,7 +229,7 @@ macro_rules! linky {
         $(, $($rest:tt)*)?
     } => {{
         let mut linky = $crate::linky!{$($($rest)*)?};
-        linky.app_id = Some(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path)).parse().unwrap());
+        linky.app_id = Some(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path)).trim().parse().expect("expected a valid u32 app ID"));
         linky
     }};
 
@@ -221,15 +238,15 @@ macro_rules! linky {
         $(, $($rest:tt)*)?
     } => {{
         let mut linky = $crate::linky!{$($($rest)*)?};
-        linky.png_icon = Some(Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "_icon.png"))));
-        linky.png_portrait = Some(Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "p.png"))));
-        linky.png_landscape = Some(Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, ".png"))));
-        linky.png_hero = Some(Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "_hero.png"))));
-        linky.png_logo = Some(Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "_logo.png"))));
+        linky.png_square = Some(::std::borrow::Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "_icon.png"))));
+        linky.png_portrait = Some(::std::borrow::Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "p.png"))));
+        linky.png_landscape = Some(::std::borrow::Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, ".png")))); 
+        linky.png_hero = Some(::std::borrow::Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "_hero.png"))));
+        linky.png_logo = Some(::std::borrow::Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "_logo.png"))));
         linky
     }};
 }
-
+ 
 /// Ascribes a type to an potentially ambiguously-typed expression.
 #[macro_export]
 macro_rules! cast {
@@ -270,20 +287,6 @@ macro_rules! cast {
     };
 }
 
-
-pub fn main() {
-    linky! {
-        name: "Celeste with Sync",
-        app_id from "steam_appid.txt",
-        assets from "assets/steam",
-        must_run_from_steam: true,
-    };
-
-    let _x = cast![into Option<u32> = 5];
-    let _x = cast![as ref to str = "hello"];
-    let _x = cast![to owned String = "hello"];
-    
-}
 
 // #[derive(Debug, Default)]
 // pub struct Linky {
@@ -415,15 +418,6 @@ pub struct ShortcutBuilder<'a> {
     logo_position: Option<ShortcutLogoPosition>,
     logo_max_height_percent: Option<f32>,
     logo_max_width_percent: Option<f32>,
-}
-
-#[derive(Debug, Default, Clone, Copy)]
-pub enum ShortcutLogoPosition {
-    #[default]
-    BottomLeft,
-    TopCenter,
-    CenterCenter,
-    BottomCenter,
 }
 
 // {"nVersion":1,"logoPosition":{"pinnedPosition":"UpperCenter","nWidthPct":95.70661896243291,"nHeightPct":82.63888888888891}}
