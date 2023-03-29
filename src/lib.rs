@@ -127,7 +127,8 @@ impl Args {
         let binary_source = self.binary_source.unwrap_or_else(|| binary_actual.clone());
         let binary_target = self.binary.unwrap_or_else(|| {
             let mut path = home_dir().unwrap();
-            path.push(".local/bin");
+            path.push(".local");
+            path.push("bin");
             path.push(self.crate_name);
             path
         });
