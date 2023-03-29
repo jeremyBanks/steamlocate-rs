@@ -1,9 +1,11 @@
 [package]
-name = "slinky-slint-example"
+name = "slinky-game-example"
 version = "0.1.0"
 edition = "2021"
 publish = false
 
 [dependencies]
+eframe = "0.21.3"
+egui = "0.21.0"
 slinky = { path = "../.." }
 winit = "0.28.3"

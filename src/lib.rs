@@ -1,6 +1,6 @@
 //! `slinky` is a library for adding a shortcut to your binary to the local
 //! Steam game/app library (without actually distributing it through Steam).
-//! 
+//!
 //! At least for this initial version, the only supported platform is
 //! Steam Deck Arch Linux, and the only entry point is the `slinky::linky!`
 //! macro.
@@ -8,7 +8,7 @@
 //! The `slinky::linky!` macro is typically called near the beginning of
 //! your `main` function. It takes optional keyword arguments. It returns
 //! some `impl std::process::Termination`.
-//! 
+//!
 //! The `slinky::start!` macro is similar, but instead of creating a shortcut
 //! it's used to launch an existing shortcut or Steam game. It also returns
 //! some `impl std::process::Termination` when the game process exits.
@@ -26,7 +26,7 @@
 //!     slinky::linky! {
 //!         name: "Celeste with Sync"
 //!     };
-//! 
+//!
 //!     slinky::start! {
 //!         app_id: 504230,
 //!     };
@@ -47,46 +47,46 @@ pub struct Args {
     /// The steam app ID used for this shortcut.
     /// This can be any value with the high bit set (to indicate that it's a shortcut),
     /// but most tools prefer to use the same value that Steam would if it created the shortcut.
-    /// 
+    ///
     /// ### Default
     ///  
     /// The value in the file `steam_appid.txt` in current crate's root directory, if any.
-    /// 
+    ///
     /// Otherwise, calculated from `binary` and `name` using the same algorithm
     /// as the Steam client uses when adding shortcuts.
     pub app_id: Option<u32>,
 
     /// The desired application binary path. This is where the shortcut will point.
-    /// 
+    ///
     /// ### Default
-    /// 
+    ///
     /// `$HOME/.local/bin/$CARGO_CRATE_NAME`
     pub binary: Option<PathBuf>,
 
     /// The application name that will be displayed in the Steam UI.
-    /// 
+    ///
     /// ### Default
-    /// 
+    ///
     /// The file name component of the `binary` path.
     pub name: Option<String>,
 
     /// The existing/source application binary path. If no executable exists at the
     /// `binary` path, or the file contents differ, `binary_source` will be
     /// copied to `binary` before the shortcut is created or launched.
-    /// 
+    ///
     /// ### Default
-    /// 
+    ///
     /// The path to the current process' binary.
     pub binary_source: Option<PathBuf>,
 
     /// Whether this application must only run from the `binary` path.
     /// If `true` and the application is being run from another path, the
     /// process will be re-started running from the `binary` path.
-    /// 
+    ///
     /// The new binary will replace the current process in-place.
-    /// 
+    ///
     /// ### Default
-    /// 
+    ///
     /// `true`, but note that it's effectively a no-op unless `binary` or
     /// `binary_source` are changed.
     pub must_run_from_binary_path: Option<bool>,
@@ -95,22 +95,22 @@ pub struct Args {
     /// If `true` and the application has been launched outside of Steam,
     /// the process will be re-launched through Steam. This supersedes
     /// `must_run_from_binary_path`.
-    /// 
+    ///
     /// This is kind-of like calling the official Steamworks API function
     /// [`SteamAPI_RestartAppIfNecessary`](https://partner.steamgames.com/doc/api/steam_api#SteamAPI_RestartAppIfNecessary).
-    /// 
+    ///
     /// The new binary will run in a new process. The current process will block
     /// until it the new process exits.
-    /// 
+    ///
     /// ### Default
-    /// 
+    ///
     /// `false`
     pub must_run_from_steam: Option<bool>,
 
     /// The arguments to use when re-launching the application.
-    /// 
+    ///
     /// ### Default
-    /// 
+    ///
     /// The current process's arguments.
     pub args: Option<Vec<String>>,
 
@@ -130,9 +130,9 @@ pub struct Args {
     pub png_logo: Option<Cow<'static, [u8]>>,
 
     /// The position and maximum dimensions of the logo image over the hero image in the Steam library.
-    /// 
+    ///
     /// ### Default
-    /// 
+    ///
     /// [`ShortcutLogoPosition::BottomLeft`] with `50.0`% max-width and `50.0`% max-height.
     pub png_logo_placement: Option<(ShortcutLogoPosition, (f32, f32))>,
 
@@ -148,7 +148,6 @@ pub enum ShortcutLogoPosition {
     CenterCenter,
     BottomCenter,
 }
-
 
 impl Args {
     pub fn linky(&self) {
@@ -240,53 +239,44 @@ macro_rules! linky {
         let mut linky = $crate::linky!{$($($rest)*)?};
         linky.png_square = Some(::std::borrow::Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "_icon.png"))));
         linky.png_portrait = Some(::std::borrow::Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "p.png"))));
-        linky.png_landscape = Some(::std::borrow::Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, ".png")))); 
+        linky.png_landscape = Some(::std::borrow::Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, ".png"))));
         linky.png_hero = Some(::std::borrow::Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "_hero.png"))));
         linky.png_logo = Some(::std::borrow::Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "_logo.png"))));
         linky
     }};
 }
- 
+
 /// Ascribes a type to an potentially ambiguously-typed expression.
 #[macro_export]
 macro_rules! cast {
-    ($ty:ty = $expr:expr) => {
-        {
-            fn cast(value: $ty) -> $ty {
-                value
-            }
-            cast($expr)
+    ($ty:ty = $expr:expr) => {{
+        fn cast(value: $ty) -> $ty {
+            value
         }
-    };
+        cast($expr)
+    }};
 
-    (into $ty:ty = $expr:expr) => {
-        {
-            fn cast_into<Value: Into<$ty>>(value: Value) -> $ty {
-                value.into()
-            }
-            cast_into($expr)
+    (into $ty:ty = $expr:expr) => {{
+        fn cast_into<Value: Into<$ty>>(value: Value) -> $ty {
+            value.into()
         }
-    };
-    
-    (as ref to $ty:ty = $expr:expr) => {
-        {
-            fn cast_as_ref<Value: ?Sized + AsRef<$ty>>(value: &Value) -> &$ty {
-                value.as_ref()
-            }
-            cast_as_ref($expr)
+        cast_into($expr)
+    }};
+
+    (as ref to $ty:ty = $expr:expr) => {{
+        fn cast_as_ref<Value: ?Sized + AsRef<$ty>>(value: &Value) -> &$ty {
+            value.as_ref()
         }
-    };
-    
-    (to owned $ty:ty = $expr:expr) => {
-        {
-            fn cast_to_owned<Value: ?Sized + ToOwned<Owned=$ty>>(value: &Value) -> $ty {
-                value.to_owned()
-            }
-            cast_to_owned($expr)
+        cast_as_ref($expr)
+    }};
+
+    (to owned $ty:ty = $expr:expr) => {{
+        fn cast_to_owned<Value: ?Sized + ToOwned<Owned = $ty>>(value: &Value) -> $ty {
+            value.to_owned()
         }
-    };
+        cast_to_owned($expr)
+    }};
 }
-
 
 // #[derive(Debug, Default)]
 // pub struct Linky {
