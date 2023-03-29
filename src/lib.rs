@@ -2,46 +2,16 @@
 //! Steam game/app library (without actually distributing it through Steam).
 //!
 //! At least for this initial version, the only supported platform is
-//! Steam Deck Arch Linux, and the only entry point is the `slinky::linky!`
-//! macro.
-//!
-//! The `slinky::linky!` macro is typically called near the beginning of
-//! your `main` function. It takes optional keyword arguments. It returns
-//! some `impl std::process::Termination`.
-//!
-//! The `slinky::start!` macro is similar, but instead of creating a shortcut
-//! it's used to launch an existing shortcut or Steam game. It also returns
-//! some `impl std::process::Termination` when the game process exits.
-//!
-//! ### Arguments
-//!
-//!
-//!  
-//! - `binary`
-//!
-//! ### Example
-//!
-//! ```
-//! pub fn main() {
-//!     slinky::linky! {
-//!         name: "Celeste with Sync"
-//!     };
-//!
-//!     slinky::start! {
-//!         app_id: 504230,
-//!     };
-//! }
-//! ```
+//! Steam Deck Arch Linux.
 
-#[doc(hidden)]
-pub use crate as slinky;
 
 use std::borrow::Cow;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::path::PathBuf;
+use sha2::Sha384;
 
-/// The arguments to the `slinky::linky!` macro. All fields are optional.
+#[doc(hidden)]
 #[derive(Default)]
 pub struct Args {
     /// The steam app ID used for this shortcut.
@@ -150,15 +120,46 @@ pub enum ShortcutLogoPosition {
 }
 
 impl Args {
-    pub fn linky(&self) {
-        eprintln!("how do I linky?");
+    pub fn slinky(&self) {
+        // what are the steps we need to do here?
+
+        // 1. check if the binary exists and is the same as the source
+        // 2. if not, copy the source to the binary
+        // 3. create the shortcut
+        // 4. if `must_run_from_steam` is true, check if we're running from Steam
+        // 5. if not, re-launch the binary through Steam
+        // 6. if `must_run_from_binary_path` is true, check if we're running from the binary
+        // 7. if not, re-launch the binary through Steam
+
+        // something like that, roughly, at least
+
+        self.install_binary();
+        self.upsert_steam_shortcut();
+        self.maybe_relaunch_from_steam();
+        self.maybe_relaunch_from_binary();
+    }
+
+    fn install_binary(&self) {
+        todo!()
+    }
+
+    fn upsert_steam_shortcut(&self) {
+        todo!()
+    }
+
+    fn maybe_relaunch_from_steam(&self) {
+        todo!()
+    }
+
+    fn maybe_relaunch_from_binary(&self) {
+        todo!()
     }
 }
 
 #[doc(hidden)]
-pub struct Linky(pub Args);
+pub struct Slinky(pub Args);
 
-impl Deref for Linky {
+impl Deref for Slinky {
     type Target = Args;
 
     fn deref(&self) -> &Self::Target {
@@ -166,32 +167,39 @@ impl Deref for Linky {
     }
 }
 
-impl DerefMut for Linky {
+impl DerefMut for Slinky {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl Drop for Linky {
+impl Drop for Slinky {
     fn drop(&mut self) {
-        self.0.linky()
+        self.0.slinky()
     }
 }
 
+/// Ensures that this program is installed as a Steam shortcut.
 #[macro_export]
-macro_rules! linky {
+macro_rules! slinky {
     {$(,)?} => {{
-        $crate::Linky($crate::Args {
+        $crate::Slinky($crate::Args {
             crate_name: env!("CARGO_CRATE_NAME"),
             ..Default::default()
         })
     }};
 
     {
+        self: $($rest:tt)+
+    } => {
+        $($rest)+
+    };
+
+    {
         name: $name:expr
         $(, $($rest:tt)*)?
     } => {{
-        let mut linky = $crate::linky!{$($($rest)*)?};
+        let mut linky = $crate::slinky!{$($($rest)*)?};
         linky.name = Some($crate::cast![to owned String = $name]);
         linky
     }};
@@ -200,7 +208,7 @@ macro_rules! linky {
         app_id: $app_id:expr
         $(, $($rest:tt)*)?
     } => {{
-        let mut linky = $crate::linky!{$($($rest)*)?};
+        let mut linky = $crate::slinky!{$($($rest)*)?};
         linky.app_id = Some($crate::cast![u32 = $app_id]);
         linky
     }};
@@ -209,7 +217,7 @@ macro_rules! linky {
         must_run_from_binary_path: $must_run_from_binary_path:expr
         $(, $($rest:tt)*)?
     } => {{
-        let mut linky = $crate::linky!{$($($rest)*)?};
+        let mut linky = $crate::slinky!{$($($rest)*)?};
         linky.must_run_from_binary_path = Some($must_run_from_binary_path);
         linky
     }};
@@ -218,7 +226,7 @@ macro_rules! linky {
         must_run_from_steam: $must_run_from_steam:expr
         $(, $($rest:tt)*)?
     } => {{
-        let mut linky = $crate::linky!{$($($rest)*)?};
+        let mut linky = $crate::slinky!{$($($rest)*)?};
         linky.must_run_from_steam = Some($must_run_from_steam);
         linky
     }};
@@ -227,7 +235,7 @@ macro_rules! linky {
         app_id from $path:literal
         $(, $($rest:tt)*)?
     } => {{
-        let mut linky = $crate::linky!{$($($rest)*)?};
+        let mut linky = $crate::slinky!{$($($rest)*)?};
         linky.app_id = Some(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path)).trim().parse().expect("expected a valid u32 app ID"));
         linky
     }};
@@ -246,6 +254,7 @@ macro_rules! linky {
     }};
 }
 
+#[doc(hidden)]
 /// Ascribes a type to an potentially ambiguously-typed expression.
 #[macro_export]
 macro_rules! cast {

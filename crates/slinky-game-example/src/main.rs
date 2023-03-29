@@ -8,7 +8,7 @@ use winit::{
 };
 
 fn main() {
-    slinky::linky! {
+    slinky::slinky! {
         name: "Slinky Game Example",
         app_id from "steam_appid.txt",
         assets from "assets/3216842112",
