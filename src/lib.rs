@@ -33,6 +33,10 @@
 //! }
 //! ```
 
+#[doc(hidden)]
+pub use crate as slinky;
+
+use std::borrow::Cow;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::path::PathBuf;
@@ -56,7 +60,7 @@ pub struct SlinkyArgs {
     /// 
     /// ### Default
     /// 
-    /// The path to the current process's binary.
+    /// `$HOME/.local/bin/$CARGO_CRATE_NAME`
     pub binary: Option<PathBuf>,
 
     /// The application name that will be displayed in the Steam UI.
@@ -89,7 +93,8 @@ pub struct SlinkyArgs {
 
     /// Whether this application must only be run through Steam.
     /// If `true` and the application has been launched outside of Steam,
-    /// the process will be re-launched through Steam.
+    /// the process will be re-launched through Steam. This supersedes
+    /// `must_run_from_binary_path`.
     /// 
     /// This is kind-of like calling the official Steamworks API function
     /// [`SteamAPI_RestartAppIfNecessary`](https://partner.steamgames.com/doc/api/steam_api#SteamAPI_RestartAppIfNecessary).
@@ -109,17 +114,23 @@ pub struct SlinkyArgs {
     /// The current process's arguments.
     pub args: Option<Vec<String>>,
 
-    /// `env!("CARGO_CRATE_NAME")`: The name of the crate this macro was invoked by.
+    /// The icon to use for this shortcut in the Steam library.
+    pub png_icon: Option<Cow<'static, [u8]>>,
+
+    /// The portrait-aligned cover to use for this shortcut in the Steam library.
+    pub png_portrait: Option<Cow<'static, [u8]>>,
+
+    /// The landscape-aligned cover to use for this shortcut in the Steam library.
+    pub png_landscape: Option<Cow<'static, [u8]>>,
+
+    /// The hero image to use for this shortcut in the Steam library.
+    pub png_hero: Option<Cow<'static, [u8]>>,
+
+    /// The logo image to use for this shortcut in the Steam library.
+    pub png_logo: Option<Cow<'static, [u8]>>,
+
+    /// The name of the crate this macro was invoked from.
     crate_name: &'static str,
-
-    /// `env!("CARGO_MANIFEST_DIR")`: The path to the source of crate this macro was invoked by.
-    crate_path: &'static str,
-
-    /// The contents of the file `steam_appid.txt` in the crate's root directory, if any.
-    crate_steam_app_id: Option<u32>,
-
-    /// The contents of the file `assets/steam_icon.png` in the crate's root directory, if any.
-    crate_steam_icon: Option<&'static [u8]>,
 }
 
 impl SlinkyArgs {
@@ -154,19 +165,9 @@ impl Drop for Linky {
 #[macro_export]
 macro_rules! linky {
     {$(,)?} => {{
-        let current_binary = std::env::current_exe().unwrap();
-
-        let binary = Some(current_binary.clone());
-        let binary_source = Some(current_binary.clone());
-
         Linky(SlinkyArgs {
-            binary,
-            binary_source,
             crate_name: env!("CARGO_CRATE_NAME"),
-            crate_path: env!("CARGO_MANIFEST_DIR"),
-            crate_steam_app_id: Some(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/steam_appid.txt"))).and_then(|s| s.parse().ok()),
-            crate_steam_icon: Some(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/steam_icon.png"))),
-            ..SlinkyArgs::default()
+            ..Default::default()
         })
     }};
 
@@ -185,6 +186,46 @@ macro_rules! linky {
     } => {{
         let mut linky = $crate::linky!{$($($rest)*)?};
         linky.app_id = Some(cast![u32 = $app_id]);
+        linky
+    }};
+
+    {
+        must_run_from_binary_path: $must_run_from_binary_path:expr
+        $(, $($rest:tt)*)?
+    } => {{
+        let mut linky = $crate::linky!{$($($rest)*)?};
+        linky.must_run_from_binary_path = Some($must_run_from_binary_path);
+        linky
+    }};
+
+    {
+        must_run_from_steam: $must_run_from_steam:expr
+        $(, $($rest:tt)*)?
+    } => {{
+        let mut linky = $crate::linky!{$($($rest)*)?};
+        linky.must_run_from_steam = Some($must_run_from_steam);
+        linky
+    }};
+
+    {
+        app_id from $path:literal
+        $(, $($rest:tt)*)?
+    } => {{
+        let mut linky = $crate::linky!{$($($rest)*)?};
+        linky.app_id = Some(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path)).parse().unwrap());
+        linky
+    }};
+
+    {
+        assets from $path:literal
+        $(, $($rest:tt)*)?
+    } => {{
+        let mut linky = $crate::linky!{$($($rest)*)?};
+        linky.png_icon = Some(Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "_icon.png"))));
+        linky.png_portrait = Some(Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "p.png"))));
+        linky.png_landscape = Some(Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, ".png"))));
+        linky.png_hero = Some(Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "_hero.png"))));
+        linky.png_logo = Some(Cow::Borrowed(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path, "_logo.png"))));
         linky
     }};
 }
@@ -233,7 +274,9 @@ macro_rules! cast {
 pub fn main() {
     linky! {
         name: "Celeste with Sync",
-        app_id: 504_230,
+        app_id from "steam_appid.txt",
+        assets from "assets/steam",
+        must_run_from_steam: true,
     };
 
     let _x = cast![into Option<u32> = 5];
