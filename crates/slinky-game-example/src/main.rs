@@ -11,7 +11,7 @@ fn main() {
     slinky::linky! {
         name: "Slinky Game Example",
         app_id from "steam_appid.txt",
-        assets from "assets/steam",
+        assets from "assets/3216842112",
         must_run_from_steam: true,
     };
 

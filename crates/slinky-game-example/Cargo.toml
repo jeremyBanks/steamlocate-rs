@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
+slinky = { path = "../.." }
 eframe = "0.21.3"
 egui = "0.21.0"
-slinky = { path = "../.." }
 winit = "0.28.3"
