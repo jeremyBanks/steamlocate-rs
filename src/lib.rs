@@ -4,14 +4,16 @@
 //! At least for this initial version, the only supported platform is
 //! Steam Deck Arch Linux.
 
-use sha2::Sha384;
 use sha2::Digest;
+use sha2::Sha384;
 use std::borrow::Cow;
 use std::env::current_exe;
 use std::env::home_dir;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::path::PathBuf;
+use tracing::instrument;
+use tracing::warn;
 
 #[derive(Default)]
 pub struct Args {
@@ -122,10 +124,14 @@ pub enum ShortcutLogoPosition {
 
 impl Args {
     #[allow(deprecated)]
+    #[instrument(skip(self))]
     pub fn slinky(&self) {
         let binary_actual = current_exe().unwrap();
-        let binary_source = self.binary_source.unwrap_or_else(|| binary_actual.clone());
-        let binary_target = self.binary.unwrap_or_else(|| {
+        let binary_source = self
+            .binary_source
+            .clone()
+            .unwrap_or_else(|| binary_actual.clone());
+        let binary_target = self.binary.clone().unwrap_or_else(|| {
             let mut path = home_dir().unwrap();
             path.push(".local");
             path.push("bin");
@@ -172,27 +178,27 @@ impl Args {
     }
 
     fn install_binary(&self) {
+        warn!("install_binary is not implemented yet");
         // 1. check if the binary exists and is the same as the source
         // 2. if not, copy the source to the binary, and mark it as executable
 
         // we need to read each file from disk, if it exists, and calculate its sha-384 hash.
         // but if the target file doesn't exist we can skip the ceremony.
 
-        let 
-
-
+        // let
     }
 
     fn upsert_steam_shortcut(&self) {
-        todo!()
+        warn!("upsert_steam_shortcut is not implemented yet");
+        // 3. create the shortcut in every steam library we find.
     }
 
     fn maybe_relaunch_from_steam(&self) {
-        todo!()
+        warn!("maybe_relaunch_from_steam is not implemented yet");
     }
 
     fn maybe_relaunch_from_binary(&self) {
-        todo!()
+        warn!("maybe_relaunch_from_binary is not implemented yet");
     }
 }
 

@@ -1,7 +1,20 @@
 use eframe::egui;
 use slinky::slinky;
+use tracing_subscriber::prelude::*;
 
 fn main() {
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_writer(tracing_appender::rolling::never(".", "example.log"))
+                .with_ansi(false),
+        )
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_filter(tracing_subscriber::EnvFilter::from_default_env()),
+        )
+        .init();
+
     drop(slinky! {
         name: "Slinky Game Example",
         app_id from "steam_appid.txt",
@@ -14,6 +27,18 @@ fn main() {
         fullscreen: true,
         ..Default::default()
     };
+
+    // NB: don'y forget to run
+    //   ./steam.exe -shutdown 
+    // if you make changes to the shortcuts.vdf file
+    // if you want to re-launch, consider doing
+    //   ./steam.exe steam://open/games/details/2472263506
+    // to open the library page where it's installed for the user
+    // but note that this seems to only apply to the shortcuts file,
+    // if you're only changing the associated images, it works fine regardless.
+
+    return;
+
     eframe::run_native(
         "Slinky Game Example",
         options,
